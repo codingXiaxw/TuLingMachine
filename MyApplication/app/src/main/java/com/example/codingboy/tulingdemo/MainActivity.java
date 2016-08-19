@@ -6,12 +6,16 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.Toast;
+
+import com.google.gson.Gson;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -23,8 +27,11 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -70,18 +77,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     }
 
-    class MyAsyncTask extends AsyncTask<String,Void,String>
+    class MyAsyncTask extends AsyncTask<String,Void,Answer>
     {
 
 
         @Override
-        protected String doInBackground(String... params)
+        protected Answer doInBackground(String... params)
         {
+
+            HttpURLConnection connection=null;
             try {
                 URL url = new URL(params[0]);
-                HttpURLConnection connection= (HttpURLConnection) url.openConnection();
+                connection= (HttpURLConnection) url.openConnection();
                 InputStream in=connection.getInputStream();
-                BufferedReader reader=new BufferedReader(new InputStreamReader(in,"utf-8"));
+                BufferedReader reader=new BufferedReader(new InputStreamReader(in));
                 String line;
                 StringBuffer response=new StringBuffer();
                 while ((line=reader.readLine())!=null)
@@ -89,9 +98,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     response.append(line);
                 }
 
-                JSONObject jsonObject=new JSONObject(response.toString());
-                result=jsonObject.getString("text");
-                return result;
+                Gson gson=new Gson();
+                Answer answer=gson.fromJson(response.toString(),Answer.class);
+                in.close();
+                return answer;
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -101,9 +111,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 
         @Override
-        protected void onPostExecute(String s) {
-            super.onPostExecute(s);
-            Data data2=new Data(s,0);
+        protected void onPostExecute(Answer answer) {
+            super.onPostExecute(answer);
+            Data data2=new Data(answer.text,0);
             list.add(data2);
             adapter.notifyDataSetChanged();
 
@@ -111,7 +121,31 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    private boolean isExit=false;
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode==KeyEvent.KEYCODE_BACK)
+        {
+            exitBy2Click();
+        }
+        return super.onKeyDown(keyCode, event);
+    }
 
-
+    private void exitBy2Click() {
+        if(isExit==false)
+        {
+            isExit=true;
+            Toast.makeText(MainActivity.this,"再按一次退出",Toast.LENGTH_SHORT).show();
+            Timer timer=new Timer();
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    isExit=false;
+                }
+            },2000);
+        }else {
+            finish();
+        }
+    }
 }
 
